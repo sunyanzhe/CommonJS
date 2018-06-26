@@ -1,0 +1,103 @@
+Module对象
+    Node内部提供了一个Module构造函数,所有模块都是Module的实例
+    
+    function Module(id,parent){
+        this.id=id;
+        this.exports={};
+        this.parent=parent;
+        ...
+    }
+    
+    每个模块内部,都有一个module对象,代表当前模块.它有一下属性
+        >module.id          ———— 模块的标识符,通常带有绝对路径的模块文件名
+        >module.filename    ———— 模块的文件名,带有绝对路径
+        >module.loaded      ———— 返回一个布尔值,表示模块是否已经完成加载
+        >module.parent      ———— 返回一个对象,表示调用该模块的模块
+        >module.children    ———— 返回一个数组,表示该模块要用到的其他模块
+        >module.exports     ———— 表示模块对外输出的值
+    
+    下面是一个实例文件,最后一行输出module变量.
+    //test.js
+    var example=require('./example.js');
+    console.log(module);
+
+    执行这个文件,命令行会输出如下信息.
+    Module {
+        id: '.',
+        exports: {},
+        parent: null,
+        filename: 'D:\\Learning File\\CommonJS\\test.js',
+        loaded: false,
+        children:
+        [ Module {
+            id: 'D:\\Learning File\\CommonJS\\example.js',
+            exports: [Object],
+            parent: [Circular],
+            filename: 'D:\\Learning File\\CommonJS\\example.js',
+            loaded: true,
+            children: [],
+            paths: [Array] } ],
+        paths:
+        [ 'D:\\Learning File\\CommonJS\\node_modules',
+            'D:\\Learning File\\node_modules',
+            'D:\\node_modules' ] 
+    }
+
+    如果在命令行下调用某个模块,比如node something.js,那么module.parent就是null.
+    如果是在脚本之中调用,比如require('./something.js'),那么module.parent就是调用它的模块.
+    利用这一点,可以判断当前模块是否为入口脚本
+
+    if(!module.parent){
+        //ran with `node something.js`
+        app.listen(8088,function(){
+            console.log('app listening on port 8088');
+        })
+    }else{
+        //use with `require('/.something.js')`
+        module.exports=app;
+    }
+
+    1. module.exports属性
+        module.exports属性表示当前模块对外输出的接口,其他文件加载该模块,实际上就是读取module.exports变量
+
+        var EventEmitter=require('events').EventEmitter;
+        module.exports=new EventEmitter();
+
+        setTimeout(function(){
+            module.exports.emit('ready');
+        },1000)
+
+        上面模块会在加载后1秒后,发出ready事件.其他文件监听该事件,可以写成下面这样
+        var a=require('./a');
+        a.on('ready',function(){
+            console.log('module a is ready');
+        })
+    
+    2.exports变量
+        为了方便,Node为每个模块提供了一个exports变量,指向module.exports.这等同于在每个模块头部,有一行这样的命令
+        var exports=module.exports;
+
+        造成的结果是,在对外输出模块接口时,可以向exports对象添加方法
+        exports.area=function(r){
+            return Math.PI*r*r;
+        };
+        exports.circumference=function(r){
+            return 2*Math.PI*r;
+        };
+
+        *注意,不能直接将exports变量指向一个值,因为这样就等于切断了exports与module.exports的联系.
+        exports=function(x){console.log(x)};
+
+        上面这样的写法是无效的,因为exports不再指向module.exports了
+        下面的写法也是无效的
+        exports.heool=function(){
+            return 'hello';
+        }
+
+        module.exports='hello world';
+
+        上面的代码中,hello函数是无法对外输出的,因为module.exports被重新赋值了
+        这意味着,如果一个模块的对外接口,就是一个单一的值,不能使用exports输出,只能使用module.exports输出.
+        module.exports=function(x){console.log(x);};
+
+        如果你觉得,exports与module.exports之间的区别很难分清,一个简单的处理方法,就是放弃使用exports,只使用module.exports
