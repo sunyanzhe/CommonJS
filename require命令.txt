@@ -116,7 +116,7 @@ require命令
         NODE_PATH是历史遗留下来的一个路径解决方案,通常不应该使用,而应该使用node_modules目录机制
 
     6.模块的循环加载
-        如果发生模块的循环加载,即A加载B,B又加载A,则B将加载A的补完整版本.
+        如果发生模块的循环加载,即A加载B,B又加载A,则B将加载A的不完整版本.
 
         //a.js
         exports.x='a1';
@@ -134,3 +134,37 @@ require命令
 
         上面代码是三个JavaScript文件,其中,a.js加载了b.js,而b.js又加载了a.js.
         这是,Node返回a.js的不完整版本,所以执行结果如下.
+        
+        $ node main.js
+        b.js a1
+        a.js b2
+        main.js a2
+        main.js b2
+
+        修改main.js再次加载a.js和b.js
+
+        //main.js
+        cosnole.log('main.js',require('./a.js').x);
+        cosnole.log('main.js',require('./b.js').x);
+        cosnole.log('main.js',require('./a.js').x);
+        cosnole.log('main.js',require('./b.js').x);
+
+        执行上面代码,结果如下
+
+        $node main.js
+        b.js a1
+        a.js b2
+        main.js a2
+        main.js b2
+        main.js a2
+        main.js b2
+
+        上面代码中,第二次加载a.js和b.js时,会直接从缓存读取exports属性,所以a.js和b.js内部的console.log语句都不会执行了
+
+    7.require.main
+        require方法有一个main属性,可以用来判断模块是直接执行,还是被调用执行.
+        直接执行的时候(node moudule.js),require.main属性指向模块本身.
+        require.main === module;
+        //true
+
+        调用执行的时候(通过require加载该脚本执行),上面的表达式返回false.
